@@ -8,6 +8,8 @@ public interface RegistrationAndDiscoveryService {
 
     OperationStatus unregister(String name, String node);
 
+    OperationStatus setUnavailable(String name, String node);
+
     Group find(String name);
 
     Member find(String name, String node);

@@ -16,10 +16,12 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
         groups = hz.getMap("groups-registry");
     }
 
-    public void listenEvents(EventListener listener) {}
+    public void listenEvents(EventListener listener) {
+        // TODO
+    }
 
     public OperationStatus register(Member member) {
-        // Atomic operation when member joins the group
+        // Atomic operation to keep consistency
         groups.lock(member.getName());
         try {
             Group group = groups.get(member.getName());
@@ -49,11 +51,42 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
     }
 
     public OperationStatus unregister(String name) {
-        return null;
+        groups.remove(name);
+        return OperationStatus.createSuccessful();
     }
 
     public OperationStatus unregister(String name, String node) {
-        return null;
+        // Atomic operation to keep consistency
+        groups.lock(name);
+        try {
+            Group group = groups.get(name);
+            if (group != null) {
+                group.getMembers().remove(node);
+                groups.put(name, group);
+            }
+        } finally {
+            groups.unlock(name);
+        }
+        return OperationStatus.createSuccessful();
+    }
+
+    @Override
+    public OperationStatus setUnavailable(String name, String node) {
+        // Atomic operation to keep consistency
+        groups.lock(name);
+        try {
+            Group group = groups.get(name);
+            if (group != null) {
+                Member member = group.getMembers().get(node);
+                if (member != null) {
+                    member.setAvailable(false);
+                    groups.put(name, group);
+                }
+            }
+        } finally {
+            groups.unlock(name);
+        }
+        return OperationStatus.createSuccessful();
     }
 
     public Group find(String name) {
@@ -61,6 +94,7 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
     }
 
     public Member find(String name, String node) {
-        return null;
+        Group group = groups.get(name);
+        return  (group != null) ? group.getMembers().get(node) : null;
     }
 }
