@@ -1,15 +1,15 @@
 package com.ps.coordinator.hz;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.ps.coordinator.api.ServiceRegistry;
+import com.ps.coordinator.api.Coordinator;
 import com.ps.coordinator.api.RegistrationAndDiscoveryService;
 import com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive;
 
-public class ServiceRegistryHz implements ServiceRegistry {
+public class CoordinatorHz implements Coordinator {
 
     private RegistrationAndDiscoveryServiceInteractive registrationAndDiscoveryService;
 
-    public ServiceRegistryHz(HazelcastInstance hz, boolean isClient) {
+    public CoordinatorHz(HazelcastInstance hz, boolean isClient) {
         registrationAndDiscoveryService = new RegistrationAndDiscoveryServiceHz(hz, isClient);
     }
 

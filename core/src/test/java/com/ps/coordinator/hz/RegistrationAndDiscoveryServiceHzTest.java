@@ -11,8 +11,8 @@ public class RegistrationAndDiscoveryServiceHzTest {
     private static RegistrationAndDiscoveryServiceInteractive service;
 
     @BeforeClass public static void setUp() {
-        ServiceRegistry registry = new ServiceRegistryFactory().create(new Config(), false);
-        service = registry.lookupRegistrationAndDiscoveryServiceInteractive();
+        Coordinator coordinator = new CoordinatorFactory().create(new Config(), false);
+        service = coordinator.lookupRegistrationAndDiscoveryServiceInteractive();
     }
 
     @Test public void testRegisterAndDiscovery() {
