@@ -19,7 +19,7 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
     public void listenEvents(EventListener listener) {}
 
     public OperationStatus register(Member member) {
-        // Atomic operation when member joins the gruop
+        // Atomic operation when member joins the group
         groups.lock(member.getName());
         try {
             Group group = groups.get(member.getName());
@@ -28,14 +28,18 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
             }
             // Validate when member (node) joins to the existing group (cluster)
             else {
+                // Member type should be the same
                 if (!group.getType().equals(member.getType()))
                     return OperationStatus.createError(2,
                             "Group member (node) type should be the same as a group (cluster) type");
-                if (!group.getEndpoint().equals(member.getEndpoint()))
+                // If all group members are down - we can change endpoint to the new one
+                if (!group.isAvailable())
+                    group.setEndpoint(member.getEndpoint());
+                // But if any of members is up then new member should have the same endpoint
+                else if (!group.getEndpoint().equals(member.getEndpoint()))
                     return OperationStatus.createError(2,
                             "Group member (node) endpoint should be the same as a group (cluster) endpoint");
             }
-            group.setAvailable(true);
             group.getMembers().put(member.getNode(), member);
             groups.put(group.getName(), group);
         } finally {

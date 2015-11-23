@@ -10,13 +10,11 @@ public class Group implements Serializable {
     private String type;
     private String endpoint;
     private Map<String, Member> members;
-    private boolean isAvailable;
 
     public Group(String name, String type, String endpoint) {
         this.name = name;
         this.type = type;
         this.endpoint = endpoint;
-        isAvailable = true;
     }
 
     public String getName() {
@@ -53,11 +51,9 @@ public class Group implements Serializable {
     }
 
     public boolean isAvailable() {
-        return isAvailable;
+        for (Member member : members.values())
+            if (member.isAvailable()) return true;
+        return false;
     }
 
-    public Group setAvailable(boolean available) {
-        isAvailable = available;
-        return this;
-    }
 }
