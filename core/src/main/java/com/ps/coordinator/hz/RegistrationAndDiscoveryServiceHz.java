@@ -1,4 +1,4 @@
-package com.ps.coordinator.api.hz;
+package com.ps.coordinator.hz;
 
 import com.ps.coordinator.api.Group;
 import com.ps.coordinator.api.Member;

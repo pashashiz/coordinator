@@ -1,10 +1,10 @@
-package com.ps.coordinator.api.hz;
+package com.ps.coordinator.hz;
 
 import com.ps.coordinator.ServiceRegistry;
 import com.ps.coordinator.api.RegistrationAndDiscoveryService;
 import com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive;
 
-class ServiceRegistryHz implements ServiceRegistry {
+public class ServiceRegistryHz implements ServiceRegistry {
 
     private RegistrationAndDiscoveryServiceInteractive registrationAndDiscoveryService;
 

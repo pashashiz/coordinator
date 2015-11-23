@@ -1,4 +1,4 @@
-package com.ps.coordinator;
+package com.ps.coordinator.api;
 
 import com.ps.coordinator.api.RegistrationAndDiscoveryService;
 import com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive;

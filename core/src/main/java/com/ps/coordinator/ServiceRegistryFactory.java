@@ -1,6 +1,7 @@
 package com.ps.coordinator;
 
 import com.ps.coordinator.api.hz.ServiceRegistryHz;
+import com.ps.coordinator.hz.ServiceRegistryHz;
 
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
