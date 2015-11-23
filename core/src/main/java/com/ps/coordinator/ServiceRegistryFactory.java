@@ -1,6 +1,6 @@
 package com.ps.coordinator;
 
-import com.ps.coordinator.api.hz.ServiceRegistryHz;
+import com.ps.coordinator.api.ServiceRegistry;
 import com.ps.coordinator.hz.ServiceRegistryHz;
 
 import java.util.concurrent.locks.Lock;
@@ -11,19 +11,16 @@ public class ServiceRegistryFactory {
     private static volatile ServiceRegistry instance;
     private static final Lock mutex = new ReentrantLock();
 
-    public ServiceRegistry create(ServiceProvider provider) {
-        switch (provider) {
-            case HAZELCAST: return new ServiceRegistryHz();
-            default: throw new IllegalArgumentException("Not supported Service Provider: " + provider);
-        }
+    public ServiceRegistry create(boolean isClient) {
+        return new ServiceRegistryHz(isClient);
     }
 
-    public static void initForNonContainerEnvironment(ServiceProvider provider) {
+    public static void initForNonContainerEnvironment(boolean isClient) {
         mutex.lock();
         try {
             if (instance != null)
                 throw new IllegalStateException("Cannot init Service Provider because the system already has one");
-            instance = new ServiceRegistryFactory().create(provider);
+            instance = new ServiceRegistryFactory().create(isClient);
         } finally {
             mutex.unlock();
         }

@@ -7,9 +7,13 @@ import com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive;
 
 public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscoveryServiceInteractive {
 
-    public void listenEvents(EventListener listener) {
+    private boolean isClientMode;
 
+    public RegistrationAndDiscoveryServiceHz(boolean isClient) {
+        this.isClientMode = isClient;
     }
+
+    public void listenEvents(EventListener listener) {}
 
     public OperationStatus register(Member member) {
         return null;
