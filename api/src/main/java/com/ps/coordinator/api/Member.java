@@ -1,23 +1,65 @@
 package com.ps.coordinator.api;
 
-public interface Member {
+import java.io.Serializable;
 
-    String getName();
+public class Member implements Serializable {
 
-    Member setName(String type);
+    private String name;
+    private String node;
+    private String type;
+    private String endpoint;
+    private boolean isAvailable;
 
-    String getNode();
+    public Member(String name, String node, String type, String endpoint) {
+        this.name = name;
+        this.node = node;
+        this.type = type;
+        this.endpoint = endpoint;
+        isAvailable = true;
+    }
 
-    Member setNode(String node);
+    public String getName() {
+        return name;
+    }
 
-    String getType();
+    public Member setName(String name) {
+        this.name = name;
+        return this;
+    }
 
-    Member setType(String type);
+    public String getNode() {
+        return node;
+    }
 
-    String getEndpoint();
+    public void setNode(String node) {
+        this.node = node;
+    }
 
-    Member setEndpoint(String endpoint);
+    public String getType() {
+        return type;
+    }
 
-    boolean isAvailable();
+    public Member setType(String type) {
+        this.type = type;
+        return this;
+    }
+
+    public String getEndpoint() {
+        return endpoint;
+    }
+
+    public Member setEndpoint(String endpoint) {
+        this.endpoint = endpoint;
+        return this;
+    }
+
+    public boolean isAvailable() {
+        return isAvailable;
+    }
+
+    public Member setAvailable(boolean available) {
+        isAvailable = available;
+        return this;
+    }
 
 }
