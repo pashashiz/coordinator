@@ -17,7 +17,6 @@ public class Group implements Serializable {
         this.type = type;
         this.endpoint = endpoint;
         isAvailable = true;
-        members = new HashMap<>();
     }
 
     public String getName() {
@@ -48,6 +47,8 @@ public class Group implements Serializable {
     }
 
     public Map<String, Member> getMembers() {
+        if (members == null)
+            members = new HashMap<>();
         return members;
     }
 

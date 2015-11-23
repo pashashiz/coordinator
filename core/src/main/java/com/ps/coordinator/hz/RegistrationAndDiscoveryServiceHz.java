@@ -9,19 +9,38 @@ import com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive;
 public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscoveryServiceInteractive {
 
     private final boolean isClientMode;
-    private final IMap<String, Group> groupRegistry;
+    private final IMap<String, Group> groups;
 
     public RegistrationAndDiscoveryServiceHz(HazelcastInstance hz, boolean isClient) {
         isClientMode = isClient;
-        groupRegistry = hz.getMap("groups-registry");
+        groups = hz.getMap("groups-registry");
     }
 
     public void listenEvents(EventListener listener) {}
 
     public OperationStatus register(Member member) {
-        Group group = new Group(member.getName(), member.getType(), member.getEndpoint());
-        group.getMembers().put(member.getNode(), member);
-        groupRegistry.put(member.getName(), group);
+        // Atomic operation when member joins the gruop
+        groups.lock(member.getName());
+        try {
+            Group group = groups.get(member.getName());
+            if (group == null) {
+                group = new Group(member.getName(), member.getType(), member.getEndpoint());
+            }
+            // Validate when member (node) joins to the existing group (cluster)
+            else {
+                if (!group.getType().equals(member.getType()))
+                    return OperationStatus.createError(2,
+                            "Group member (node) type should be the same as a group (cluster) type");
+                if (!group.getEndpoint().equals(member.getEndpoint()))
+                    return OperationStatus.createError(2,
+                            "Group member (node) endpoint should be the same as a group (cluster) endpoint");
+            }
+            group.setAvailable(true);
+            group.getMembers().put(member.getNode(), member);
+            groups.put(group.getName(), group);
+        } finally {
+            groups.unlock(member.getName());
+        }
         return OperationStatus.createSuccessful();
     }
 
@@ -34,7 +53,7 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
     }
 
     public Group find(String name) {
-        return groupRegistry.get(name);
+        return groups.get(name);
     }
 
     public Member find(String name, String node) {
