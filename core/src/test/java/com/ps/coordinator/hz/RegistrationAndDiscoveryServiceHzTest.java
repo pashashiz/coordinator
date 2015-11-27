@@ -16,13 +16,15 @@ public class RegistrationAndDiscoveryServiceHzTest {
     }
 
     @Test public void testRegisterAndDiscovery() {
-        OperationStatus statusOk = service.register(new Member("test-apl", "node-1", "test", "localhost"));
+        OperationStatus statusOk = service.register(
+                new Member("test-apl", "node-1", Type.SERVICE, "test-sub-type", "localhost"));
         Assert.assertEquals(statusOk.getStatus(), OperationStatus.Status.SUCCESSFUL);
-        Assert.assertEquals(service.find("test-apl").getEndpoint(), "localhost");
-        OperationStatus statusError = service.register(new Member("test-apl", "node-2", "test", "new-host"));
+        Assert.assertEquals(service.findAll("test-apl").getEndpoint(), "localhost");
+        OperationStatus statusError = service.register(
+                new Member("test-apl", "node-2", Type.SERVICE, "test-sub-type", "new-host"));
         Assert.assertEquals(statusError.getStatus(), OperationStatus.Status.ERROR);
-        Assert.assertNull(service.find("test-apl").getMembers().get("node-2"));
-        Assert.assertEquals(service.find("test-apl").getEndpoint(), "localhost");
+        Assert.assertNull(service.findAll("test-apl").getMembers().get("node-2"));
+        Assert.assertEquals(service.findAll("test-apl").getEndpoint(), "localhost");
     }
 
 }

@@ -7,13 +7,14 @@ import java.util.Map;
 public class Group implements Serializable {
 
     private String name;
-    private String type;
+    private Type type;
+    private String subtype;
     private String endpoint;
-    private Map<String, Member> members;
+    private Map<String, LinkedMember> members;
 
-    public Group(String name, String type, String endpoint) {
+    public Group(String name, Type type, String subtype, String endpoint) {
         this.name = name;
-        this.type = type;
+        this.subtype = subtype;
         this.endpoint = endpoint;
     }
 
@@ -26,12 +27,21 @@ public class Group implements Serializable {
         return this;
     }
 
-    public String getType() {
+    public Type getType() {
         return type;
     }
 
-    public Group setType(String type) {
+    public Group setType(Type type) {
         this.type = type;
+        return this;
+    }
+
+    public String getSubtype() {
+        return subtype;
+    }
+
+    public Group setSubtype(String subtype) {
+        this.subtype = subtype;
         return this;
     }
 
@@ -44,16 +54,28 @@ public class Group implements Serializable {
         return this;
     }
 
-    public Map<String, Member> getMembers() {
+    public Map<String, LinkedMember> getMembers() {
         if (members == null)
             members = new HashMap<>();
         return members;
     }
 
     public boolean isAvailable() {
-        for (Member member : members.values())
+        for (LinkedMember member : members.values())
             if (member.isAvailable()) return true;
         return false;
+    }
+
+    public static Member createBy(Group group, String node) {
+        LinkedMember linkedMember = group.getMembers().get(node);
+        if (linkedMember == null)
+            throw new IllegalArgumentException("No such node [" + node + "] in the group [" + group + "]");
+        return new Member(group.getName(), node, group.getType(), group.getSubtype(), group.getEndpoint())
+                .setAvailable(linkedMember.isAvailable());
+    }
+
+    public static Group createBy(Member member) {
+        return new Group(member.getName(), member.getType(), member.subtype(), member.getEndpoint());
     }
 
 }
