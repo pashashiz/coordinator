@@ -9,4 +9,6 @@ public interface Coordinator {
 
     RegistrationAndDiscoveryServiceInteractive lookupRegistrationAndDiscoveryServiceInteractive();
 
+    void shutdown();
+
 }

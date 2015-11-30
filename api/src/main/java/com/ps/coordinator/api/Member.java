@@ -1,5 +1,7 @@
 package com.ps.coordinator.api;
 
+import static com.ps.coordinator.api.utils.Assert.*;
+
 import java.io.Serializable;
 
 public class Member implements Serializable {
@@ -8,16 +10,15 @@ public class Member implements Serializable {
     private String node;
     private Type type;
     private String subtype;
-    private String endpoint;
+    private String address;
     private boolean isAvailable;
 
-    public Member(String name, String node, Type type, String subtype, String endpoint) {
-        this.name = name;
-        this.node = node;
-        this.type = type;
-        this.subtype = subtype;
-        this.endpoint = endpoint;
-        isAvailable = true;
+    public Member(String name, String node, Type type, String subtype, String address) {
+        setName(name).setNode(node).setType(type).setSubtype(subtype).setAddress(address).setAvailable(true);
+    }
+
+    public Member(String name, Type type, String subtype) {
+        this(name, "master", type, subtype, null);
     }
 
     public String getName() {
@@ -25,6 +26,7 @@ public class Member implements Serializable {
     }
 
     public Member setName(String name) {
+        checkNullOrEmpty(name, "Member name");
         this.name = name;
         return this;
     }
@@ -33,8 +35,10 @@ public class Member implements Serializable {
         return node;
     }
 
-    public void setNode(String node) {
+    public Member setNode(String node) {
+        checkNullOrEmpty(node, "Member node name");
         this.node = node;
+        return this;
     }
 
     public Type getType() {
@@ -42,25 +46,27 @@ public class Member implements Serializable {
     }
 
     public Member setType(Type type) {
+        checkNull(type, "Member type");
         this.type = type;
         return this;
     }
 
-    public String subtype() {
+    public String getSubtype() {
         return subtype;
     }
 
     public Member setSubtype(String subtype) {
+        checkNullOrEmpty(subtype, "Member subtype");
         this.subtype = subtype;
         return this;
     }
 
-    public String getEndpoint() {
-        return endpoint;
+    public String getAddress() {
+        return address;
     }
 
-    public Member setEndpoint(String endpoint) {
-        this.endpoint = endpoint;
+    public Member setAddress(String address) {
+        this.address = address;
         return this;
     }
 
@@ -73,4 +79,30 @@ public class Member implements Serializable {
         return this;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Member member = (Member) o;
+        return name.equals(member.name) && node.equals(member.node);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = name.hashCode();
+        result = 31 * result + node.hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Member{" +
+                "name='" + name + '\'' +
+                ", node='" + node + '\'' +
+                ", type=" + type +
+                ", getSubtype='" + subtype + '\'' +
+                ", address='" + address + '\'' +
+                ", isAvailable=" + isAvailable +
+                '}';
+    }
 }

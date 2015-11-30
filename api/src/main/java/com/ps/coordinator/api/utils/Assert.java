@@ -1,6 +1,6 @@
-package com.ps.coordinator.api;
+package com.ps.coordinator.api.utils;
 
-public class Assertions {
+public class Assert {
 
     public static void checkNull(Object object, String name) {
         if (object == null)

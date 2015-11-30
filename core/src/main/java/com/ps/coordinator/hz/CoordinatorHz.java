@@ -8,8 +8,10 @@ import com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive;
 public class CoordinatorHz implements Coordinator {
 
     private RegistrationAndDiscoveryServiceInteractive registrationAndDiscoveryService;
+    private HazelcastInstance hz;
 
     public CoordinatorHz(HazelcastInstance hz, boolean isClient) {
+        this.hz = hz;
         registrationAndDiscoveryService = new RegistrationAndDiscoveryServiceHz(hz, isClient);
     }
 
@@ -19,5 +21,10 @@ public class CoordinatorHz implements Coordinator {
 
     public RegistrationAndDiscoveryServiceInteractive lookupRegistrationAndDiscoveryServiceInteractive() {
         return registrationAndDiscoveryService;
+    }
+
+    @Override
+    public void shutdown() {
+        hz.shutdown();
     }
 }

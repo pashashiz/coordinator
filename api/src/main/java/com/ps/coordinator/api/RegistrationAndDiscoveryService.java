@@ -1,17 +1,21 @@
 package com.ps.coordinator.api;
 
+import java.util.List;
+
 public interface RegistrationAndDiscoveryService {
 
-    OperationStatus register(Member member);
+    void register(Member member);
 
-    OperationStatus unregister(String name, String node);
+    void unregister(String name, String node);
 
-    OperationStatus unregisterAll(String name);
+    void unregister(String name);
 
-    OperationStatus setUnavailable(String name, String node);
+    void setUnavailable(String name, String node);
 
-    Member find(String name, String node);
+    Group find(String name);
 
-    Group findAll(String name);
+    List<Group> findAll(Type type);
+
+    List<Group> findAll(Type type, String subtype);
 
 }
