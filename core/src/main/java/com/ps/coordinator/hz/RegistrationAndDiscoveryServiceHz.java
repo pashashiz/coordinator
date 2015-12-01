@@ -4,9 +4,11 @@ import com.hazelcast.core.*;
 import com.ps.coordinator.api.*;
 import com.ps.coordinator.api.Member;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import static com.ps.coordinator.api.utils.Assert.*;
+import static com.hazelcast.query.Predicates.*;
 
 public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscoveryServiceInteractive {
 
@@ -103,14 +105,15 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
     }
 
     @Override
-    public List<Group> findAll(Type type) {
-        // TODO
-        return null;
+    public Set<Group> findAll(Type type) {
+        checkNull(type, "Group type");
+        return new HashSet<>(groups.values(equal("type", type)));
     }
 
     @Override
-    public List<Group> findAll(Type type, String subtype) {
-        // TODO
-        return null;
+    public Set<Group> findAll(Type type, String subtype) {
+        checkNull(type, "Group type");
+        checkNullOrEmpty(subtype, "Group subtype");
+        return new HashSet<>(groups.values(and(equal("type", type), equal("subtype", subtype))));
     }
 }

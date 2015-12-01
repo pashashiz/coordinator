@@ -6,6 +6,7 @@ import com.ps.coordinator.api.*;
 import org.junit.*;
 
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -115,12 +116,22 @@ public class RegistrationAndDiscoveryServiceHzTest {
         assertNull("The whole group should be unregistered", service.find("apl"));
     }
 
-    @Test public void testSearchByType() {
-        // TODO
-    }
-
-    @Test public void testSearchByTypeAndSubtype() {
-        // TODO
+    @Test public void testSearch() {
+        service.register(new Member("apl-1", "node-1", Type.SERVICE, "subtype-1", "localhost-1"));
+        service.register(new Member("apl-2", "node-1", Type.SERVICE, "subtype-2", "localhost-2"));
+        Set<Group> groupsByType = service.findAll(Type.SERVICE);
+        assertEquals("Should found both registered services", 2, groupsByType.size());
+        assertTrue("Found services should be valid",
+                groupsByType.contains(new Group("apl-1", Type.SERVICE, "subtype-1", "localhost-1")) &&
+                groupsByType.contains(new Group("apl-2", Type.SERVICE, "subtype-2", "localhost-2")));
+        Set<Group> groupsBySubtype = service.findAll(Type.SERVICE, "subtype-1");
+        assertEquals("Should found one registered services with specified subtype", 1, groupsBySubtype.size());
+        assertTrue("Found service should be valid",
+                groupsByType.contains(new Group("apl-1", Type.SERVICE, "subtype-1", "localhost-1")));
+        service.unregister("apl-1");
+        service.unregister("apl-2");
+        assertNull("The first service should be unregistered", service.find("apl-1"));
+        assertNull("The second service should be unregistered", service.find("apl-2"));
     }
 
     private <T extends Exception> void assertException(String message, Class<T> exception, Runnable function) {

@@ -1,6 +1,6 @@
 package com.ps.coordinator.api;
 
-import java.util.List;
+import java.util.Set;
 
 public interface RegistrationAndDiscoveryService {
 
@@ -14,8 +14,8 @@ public interface RegistrationAndDiscoveryService {
 
     Group find(String name);
 
-    List<Group> findAll(Type type);
+    Set<Group> findAll(Type type);
 
-    List<Group> findAll(Type type, String subtype);
+    Set<Group> findAll(Type type, String subtype);
 
 }
