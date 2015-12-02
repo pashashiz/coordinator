@@ -1,11 +1,18 @@
 package com.ps.coordinator.hz;
 
 import com.hazelcast.core.*;
+import com.hazelcast.map.listener.EntryAddedListener;
+import com.hazelcast.map.listener.EntryRemovedListener;
+import com.hazelcast.map.listener.EntryUpdatedListener;
 import com.ps.coordinator.api.*;
 import com.ps.coordinator.api.Member;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import static com.ps.coordinator.api.utils.Assert.*;
 import static com.hazelcast.query.Predicates.*;
@@ -14,14 +21,17 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
 
     private final boolean isClientMode;
     private final IMap<String, Group> groups;
+    private final ConcurrentSkipListSet<EventListener> listeners = new ConcurrentSkipListSet<>();
+    private final Logger log = LoggerFactory.getLogger(getClass());
 
     public RegistrationAndDiscoveryServiceHz(HazelcastInstance hz, boolean isClient) {
         isClientMode = isClient;
         groups = hz.getMap("groups-registry");
+        groups.addEntryListener(new GroupsListener(), true);
     }
 
     public void listenEvents(EventListener listener) {
-        // TODO
+        listeners.add(listener);
     }
 
     public void register(Member member) {
@@ -116,4 +126,70 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
         checkNullOrEmpty(subtype, "Group subtype");
         return new HashSet<>(groups.values(and(equal("type", type), equal("subtype", subtype))));
     }
+
+    private class GroupsListener implements EntryAddedListener<String, Group>,
+            EntryUpdatedListener<String, Group>, EntryRemovedListener<String, Group> {
+
+        @Override
+        public void entryAdded(EntryEvent<String, Group> event) {
+            Set<Member> registered = getRegisteredMembers(event.getValue(), event.getOldValue());
+            if (!registered.isEmpty()) log.trace("New members {} were registered", registered);
+            log.trace("New {} was created", event.getValue());
+            for (EventListener listener : listeners) {
+                for (Member member : registered)
+                    listener.onMemberRegistered(member);
+                listener.onGroupChanged(event.getValue());
+            }
+        }
+
+        @Override
+        public void entryRemoved(EntryEvent<String, Group> event) {
+            Set<Member> unregistered = getUnregisteredMembers(event.getValue(), event.getOldValue());
+            if (!unregistered.isEmpty()) log.trace("Members {} were unregistered", unregistered);
+            log.trace("{} was removed", event.getValue());
+            for (EventListener listener : listeners) {
+                for (Member member : unregistered)
+                    listener.onMemberUnregistered(member);
+                listener.onGroupRemoved(event.getValue());
+            }
+        }
+
+        @Override
+        public void entryUpdated(EntryEvent<String, Group> event) {
+            Set<Member> registered = getRegisteredMembers(event.getValue(), event.getOldValue());
+            Set<Member> unregistered = getUnregisteredMembers(event.getValue(), event.getOldValue());
+            if (!registered.isEmpty()) log.trace("New members {} were registered", registered);
+            if (!unregistered.isEmpty()) log.trace("Members {} were unregistered", unregistered);
+            log.trace("New {} was created", event.getValue());
+            for (EventListener listener : listeners) {
+                for (Member member : registered)
+                    listener.onMemberRegistered(member);
+                for (Member member : unregistered)
+                    listener.onMemberUnregistered(member);
+                listener.onGroupChanged(event.getValue());
+            }
+        }
+
+        private Set<Member> getRegisteredMembers(Group newGroup, Group oldGroup) {
+            Set<Member> newMembers = new HashSet<>();
+            if (newGroup != null) {
+                for (Map.Entry<String, LinkedMember> entry : newGroup.getMembers().entrySet()) {
+                    if (entry.getValue().isAvailable() && !isMemberAvailableInGroup(oldGroup, entry.getKey()))
+                        newMembers.add(Group.createBy(newGroup, entry.getKey()));
+                }
+            }
+            return newMembers;
+        }
+
+        private Set<Member> getUnregisteredMembers(Group newGroup, Group oldGroup) {
+            return getRegisteredMembers(oldGroup, newGroup);
+        }
+
+        private boolean isMemberAvailableInGroup(Group group, String member) {
+            return (group != null && !group.getMembers().containsKey(member)
+                    && !group.getMembers().get(member).isAvailable());
+        }
+
+    }
+
 }
