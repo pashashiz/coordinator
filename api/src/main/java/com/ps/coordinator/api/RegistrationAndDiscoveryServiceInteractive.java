@@ -16,6 +16,8 @@ public interface RegistrationAndDiscoveryServiceInteractive extends Registration
 
     }
 
-    void listenEvents(EventListener listener);
+    String addEventListener(EventListener listener);
+
+    void removeEventListener(String id);
 
 }

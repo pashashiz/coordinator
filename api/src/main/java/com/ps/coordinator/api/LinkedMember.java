@@ -19,4 +19,10 @@ public class LinkedMember implements Serializable {
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "Member{" +
+                "isAvailable=" + isAvailable +
+                '}';
+    }
 }

@@ -12,7 +12,9 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import static com.ps.coordinator.api.utils.Assert.*;
 import static com.hazelcast.query.Predicates.*;
@@ -21,7 +23,7 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
 
     private final boolean isClientMode;
     private final IMap<String, Group> groups;
-    private final ConcurrentSkipListSet<EventListener> listeners = new ConcurrentSkipListSet<>();
+    private final ConcurrentMap<String, EventListener> listeners = new ConcurrentHashMap<>();
     private final Logger log = LoggerFactory.getLogger(getClass());
 
     public RegistrationAndDiscoveryServiceHz(HazelcastInstance hz, boolean isClient) {
@@ -30,11 +32,21 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
         groups.addEntryListener(new GroupsListener(), true);
     }
 
-    public void listenEvents(EventListener listener) {
-        listeners.add(listener);
+    public String addEventListener(EventListener listener) {
+        log.debug("Adding new event listener {}", listener);
+        String uuid = UUID.randomUUID().toString();
+        listeners.put(uuid, listener);
+        return uuid;
+    }
+
+    @Override
+    public void removeEventListener(String id) {
+        log.debug("Removing event listener by id {}", id);
+        listeners.remove(id);
     }
 
     public void register(Member member) {
+        log.debug("Registering {}...", member);
         if (!member.isAvailable())
             throw new IllegalStateException("Cannot register unavailable member");
         checkNull(member.getType(), "Member type");
@@ -48,9 +60,11 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
             Group group = groups.get(member.getName());
             if (group == null) {
                 group = Group.createBy(member);
+                log.debug("Creating new {}...", group);
             }
             // Validate when member (node) joins to the existing group (cluster)
             else {
+                log.debug("Joining existing {}...", group);
                 // Member type and getSubtype should be the same
                 if (group.getType() == member.getType() && !group.getSubtype().equals(member.getSubtype()))
                     throw new IllegalArgumentException("Group member (node) type should be the same as a group (cluster) type");
@@ -63,6 +77,7 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
             }
             group.getMembers().put(member.getNode(), new LinkedMember(member.isAvailable()));
             groups.put(group.getName(), group);
+            log.debug("Group after joining new member: {}", group);
         } finally {
             groups.unlock(member.getName());
         }
@@ -70,16 +85,21 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
 
     @Override
     public void unregister(String name, String node) {
+        log.debug("Un-registering member [{}] of group [{}]...", node, name);
         // Atomic operation to keep consistency
         groups.lock(name);
         try {
             Group group = groups.get(name);
             if (group != null) {
                 group.getMembers().remove(node);
-                if (group.getMembers().size() == 0)
+                if (group.getMembers().size() == 0) {
+                    log.debug("Remove group after un-registering the last member");
                     groups.remove(name);
-                else
+                }
+                else {
                     groups.put(name, group);
+                    log.debug("Group after un-registering new member: {}", group);
+                }
             }
         } finally {
             groups.unlock(name);
@@ -88,11 +108,13 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
 
     @Override
     public void unregister(String name) {
+        log.debug("Un-registering the whole group [{}]", name);
         groups.remove(name);
     }
 
     @Override
     public void setUnavailable(String name, String node) {
+        log.debug("Disabling member [{}] of group [{}]...", node, name);
         // Atomic operation to keep consistency
         groups.lock(name);
         try {
@@ -102,6 +124,7 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
                 if (member != null) {
                     member.setAvailable(false);
                     groups.put(name, group);
+                    log.debug("Group after disabling member: {}", group);
                 }
             }
         } finally {
@@ -116,12 +139,14 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
 
     @Override
     public Set<Group> findAll(Type type) {
+        log.debug("Finding all groups by type [{}]", type);
         checkNull(type, "Group type");
         return new HashSet<>(groups.values(equal("type", type)));
     }
 
     @Override
     public Set<Group> findAll(Type type, String subtype) {
+        log.debug("Finding all groups by type [{}] and subtype [{}]", type, subtype);
         checkNull(type, "Group type");
         checkNullOrEmpty(subtype, "Group subtype");
         return new HashSet<>(groups.values(and(equal("type", type), equal("subtype", subtype))));
@@ -135,10 +160,10 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
             Set<Member> registered = getRegisteredMembers(event.getValue(), event.getOldValue());
             if (!registered.isEmpty()) log.trace("New members {} were registered", registered);
             log.trace("New {} was created", event.getValue());
-            for (EventListener listener : listeners) {
+            for (EventListener listener : listeners.values()) {
                 for (Member member : registered)
                     listener.onMemberRegistered(member);
-                listener.onGroupChanged(event.getValue());
+                listener.onGroupCreated(event.getValue());
             }
         }
 
@@ -146,11 +171,11 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
         public void entryRemoved(EntryEvent<String, Group> event) {
             Set<Member> unregistered = getUnregisteredMembers(event.getValue(), event.getOldValue());
             if (!unregistered.isEmpty()) log.trace("Members {} were unregistered", unregistered);
-            log.trace("{} was removed", event.getValue());
-            for (EventListener listener : listeners) {
+            log.trace("Group [{}] was removed entirely", event.getKey());
+            for (EventListener listener : listeners.values()) {
                 for (Member member : unregistered)
                     listener.onMemberUnregistered(member);
-                listener.onGroupRemoved(event.getValue());
+                listener.onGroupRemoved(event.getOldValue());
             }
         }
 
@@ -161,7 +186,7 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
             if (!registered.isEmpty()) log.trace("New members {} were registered", registered);
             if (!unregistered.isEmpty()) log.trace("Members {} were unregistered", unregistered);
             log.trace("New {} was created", event.getValue());
-            for (EventListener listener : listeners) {
+            for (EventListener listener : listeners.values()) {
                 for (Member member : registered)
                     listener.onMemberRegistered(member);
                 for (Member member : unregistered)
@@ -186,8 +211,7 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
         }
 
         private boolean isMemberAvailableInGroup(Group group, String member) {
-            return (group != null && !group.getMembers().containsKey(member)
-                    && !group.getMembers().get(member).isAvailable());
+            return (group != null && group.getMembers().containsKey(member) && group.getMembers().get(member).isAvailable());
         }
 
     }

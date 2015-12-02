@@ -9,6 +9,10 @@
         </layout>
     </appender>
 
+    <logger name="com.ps.coordinator.hz">
+        <level value="TRACE"/>
+    </logger>
+
     <root>
         <level value="DEBUG" />
         <appender-ref ref="console" />

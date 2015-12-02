@@ -7,8 +7,10 @@ import org.junit.*;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.*;
 
 import static org.junit.Assert.*;
+import static com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive.*;
 
 
 public class RegistrationAndDiscoveryServiceHzTest {
@@ -132,6 +134,77 @@ public class RegistrationAndDiscoveryServiceHzTest {
         service.unregister("apl-2");
         assertNull("The first service should be unregistered", service.find("apl-1"));
         assertNull("The second service should be unregistered", service.find("apl-2"));
+    }
+
+    @Test public void testEventListener() throws InterruptedException {
+        ListenerTracker tracker = new ListenerTracker();
+        String id = service.addEventListener(tracker.getListener());
+        service.register(new Member("apl", "node-1", Type.SERVICE, "subtype", "localhost"));
+        assertEquals("Group created event should be fired", "apl", tracker.takeGroupCreatedEvent().getName());
+        assertEquals("New member registered event should be fired", "node-1", tracker.takeMemberRegisteredEvent().getNode());
+
+        service.unregister("apl");
+        assertNull("The group should be unregistered", service.find("apl"));
+        service.removeEventListener(id);
+    }
+
+    private static class ListenerTracker {
+
+        private EventListener listener;
+        private BlockingQueue<Member> memberRegistered = new LinkedBlockingQueue<>();
+        private BlockingQueue<Member> memberUnregistered = new LinkedBlockingQueue<>();
+        private BlockingQueue<Group> groupCreated = new LinkedBlockingQueue<>();
+        private BlockingQueue<Group> groupChanged = new LinkedBlockingQueue<>();
+        private BlockingQueue<Group> groupRemoved = new LinkedBlockingQueue<>();
+
+        public ListenerTracker() {
+            listener = new EventListener() {
+                @Override
+                public void onMemberRegistered(Member member) {
+                    memberRegistered.add(member);
+                }
+                @Override
+                public void onMemberUnregistered(Member member) {
+                    memberUnregistered.add(member);
+                }
+                @Override
+                public void onGroupCreated(Group group) {
+                    groupCreated.add(group);
+                }
+                @Override
+                public void onGroupChanged(Group group) {
+                    groupChanged.add(group);
+                }
+                @Override
+                public void onGroupRemoved(Group group) {
+                    groupRemoved.add(group);
+                }
+            };
+        }
+
+        public EventListener getListener() {
+            return listener;
+        }
+
+        public Member takeMemberRegisteredEvent() throws InterruptedException {
+            return memberRegistered.take();
+        }
+
+        public Member takeMemberUnregisteredEvent() throws InterruptedException {
+            return memberUnregistered.take();
+        }
+
+        public Group takeGroupCreatedEvent() throws InterruptedException {
+            return groupCreated.take();
+        }
+
+        public Group takeGroupChangedEvent() throws InterruptedException {
+            return groupChanged.take();
+        }
+
+        public Group takeGroupRemovedEvent() throws InterruptedException {
+            return groupRemoved.take();
+        }
     }
 
     private <T extends Exception> void assertException(String message, Class<T> exception, Runnable function) {
