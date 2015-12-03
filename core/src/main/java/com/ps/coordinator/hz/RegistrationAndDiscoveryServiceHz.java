@@ -157,45 +157,61 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
 
         @Override
         public void entryAdded(EntryEvent<String, Group> event) {
-            Set<Member> registered = getRegisteredMembers(event.getValue(), event.getOldValue());
-            if (!registered.isEmpty()) log.trace("New members {} were registered", registered);
+            fireMemberEventsIfExists(event.getValue(), event.getOldValue());
             log.trace("New {} was created", event.getValue());
             for (EventListener listener : listeners.values()) {
-                for (Member member : registered)
-                    listener.onMemberRegistered(member);
                 listener.onGroupCreated(event.getValue());
-            }
-        }
-
-        @Override
-        public void entryRemoved(EntryEvent<String, Group> event) {
-            Set<Member> unregistered = getUnregisteredMembers(event.getValue(), event.getOldValue());
-            if (!unregistered.isEmpty()) log.trace("Members {} were unregistered", unregistered);
-            log.trace("Group [{}] was removed entirely", event.getKey());
-            for (EventListener listener : listeners.values()) {
-                for (Member member : unregistered)
-                    listener.onMemberUnregistered(member);
-                listener.onGroupRemoved(event.getOldValue());
+                listener.onGroupAvailable(event.getValue());
             }
         }
 
         @Override
         public void entryUpdated(EntryEvent<String, Group> event) {
-            Set<Member> registered = getRegisteredMembers(event.getValue(), event.getOldValue());
-            Set<Member> unregistered = getUnregisteredMembers(event.getValue(), event.getOldValue());
-            if (!registered.isEmpty()) log.trace("New members {} were registered", registered);
-            if (!unregistered.isEmpty()) log.trace("Members {} were unregistered", unregistered);
-            log.trace("New {} was created", event.getValue());
+            fireMemberEventsIfExists(event.getValue(), event.getOldValue());
+            log.trace("{} was rebalanced", event.getValue());
+            boolean isBecameAvailable = isGroupBecameAvailable(event.getValue(), event.getOldValue());
+            if (isBecameAvailable) log.trace("{} became available", event.getValue());
+            boolean isBecameUnavailable = isGroupBecameUnavailable(event.getValue(), event.getOldValue());
+            if (isBecameUnavailable) log.trace("{} became unavailable", event.getValue());
             for (EventListener listener : listeners.values()) {
-                for (Member member : registered)
-                    listener.onMemberRegistered(member);
-                for (Member member : unregistered)
-                    listener.onMemberUnregistered(member);
-                listener.onGroupChanged(event.getValue());
+                listener.onGroupRebalanced(event.getValue());
+                if (isBecameAvailable) listener.onGroupAvailable(event.getValue());
+                if (isBecameUnavailable) listener.onGroupUnavailable(event.getValue());
             }
         }
 
-        private Set<Member> getRegisteredMembers(Group newGroup, Group oldGroup) {
+        @Override
+        public void entryRemoved(EntryEvent<String, Group> event) {
+            fireMemberEventsIfExists(event.getValue(), event.getOldValue());
+            log.trace("Group [{}] was removed entirely", event.getKey());
+            for (EventListener listener : listeners.values()) {
+                listener.onGroupUnavailable(event.getValue());
+                listener.onGroupRemoved(event.getOldValue());
+            }
+        }
+
+        private void fireMemberEventsIfExists(Group newGroup, Group oldGroup) {
+            Set<Member> newRegistered = getNewRegisteredMembers(newGroup, oldGroup);
+            Set<Member> newUnregistered = getNewUnregisteredMembers(newGroup, oldGroup);
+            Set<Member> newAvailable = getNewAvailableMembers(newGroup, oldGroup);
+            Set<Member> newUnavailable = getNewUnavailableMembers(newGroup, oldGroup);
+            if (!newRegistered.isEmpty()) log.trace("New members {} were registered", newRegistered);
+            if (!newUnregistered.isEmpty()) log.trace("Members {} were unregistered", newUnregistered);
+            if (!newAvailable.isEmpty()) log.trace("Members {} became available", newAvailable);
+            if (!newUnavailable.isEmpty()) log.trace("Members {} became unavailable", newUnavailable);
+            for (EventListener listener : listeners.values()) {
+                for (Member member : newRegistered)
+                    listener.onMemberRegistered(member);
+                for (Member member : newUnregistered)
+                    listener.onMemberUnregistered(member);
+                for (Member member : newAvailable)
+                    listener.onMemberAvailable(member);
+                for (Member member : newUnavailable)
+                    listener.onMemberUnavailable(member);
+            }
+        }
+
+        private Set<Member> getNewAvailableMembers(Group newGroup, Group oldGroup) {
             Set<Member> newMembers = new HashSet<>();
             if (newGroup != null) {
                 for (Map.Entry<String, LinkedMember> entry : newGroup.getMembers().entrySet()) {
@@ -206,12 +222,35 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
             return newMembers;
         }
 
-        private Set<Member> getUnregisteredMembers(Group newGroup, Group oldGroup) {
-            return getRegisteredMembers(oldGroup, newGroup);
+        private Set<Member> getNewUnavailableMembers(Group newGroup, Group oldGroup) {
+            return getNewAvailableMembers(oldGroup, newGroup);
         }
 
         private boolean isMemberAvailableInGroup(Group group, String member) {
             return (group != null && group.getMembers().containsKey(member) && group.getMembers().get(member).isAvailable());
+        }
+
+        private Set<Member> getNewRegisteredMembers(Group newGroup, Group oldGroup) {
+            Set<Member> newMembers = new HashSet<>();
+            if (newGroup != null) {
+                for (Map.Entry<String, LinkedMember> entry : newGroup.getMembers().entrySet()) {
+                    if (oldGroup == null || oldGroup.getMembers().get(entry.getKey()) == null)
+                        newMembers.add(Group.createBy(newGroup, entry.getKey()));
+                }
+            }
+            return newMembers;
+        }
+
+        private Set<Member> getNewUnregisteredMembers(Group newGroup, Group oldGroup) {
+            return getNewRegisteredMembers(oldGroup, newGroup);
+        }
+
+        private boolean isGroupBecameAvailable(Group newGroup, Group oldGroup) {
+            return (newGroup != null && newGroup.isAvailable() && (oldGroup == null || !oldGroup.isAvailable()));
+        }
+
+        private boolean isGroupBecameUnavailable(Group newGroup, Group oldGroup) {
+            return isGroupBecameAvailable(oldGroup, newGroup);
         }
 
     }

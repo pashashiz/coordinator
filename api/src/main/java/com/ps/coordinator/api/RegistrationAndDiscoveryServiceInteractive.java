@@ -8,9 +8,17 @@ public interface RegistrationAndDiscoveryServiceInteractive extends Registration
 
         void onMemberUnregistered(Member member);
 
+        void onMemberAvailable(Member member);
+
+        void onMemberUnavailable(Member member);
+
         void onGroupCreated(Group group);
 
-        void onGroupChanged(Group group);
+        void onGroupRebalanced(Group group);
+
+        void onGroupAvailable(Group group);
+
+        void onGroupUnavailable(Group group);
 
         void onGroupRemoved(Group group);
 

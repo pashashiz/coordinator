@@ -136,15 +136,20 @@ public class RegistrationAndDiscoveryServiceHzTest {
         assertNull("The second service should be unregistered", service.find("apl-2"));
     }
 
-    @Test public void testEventListener() throws InterruptedException {
+    @Test(timeout = 60000) public void testEventListener() throws InterruptedException {
         ListenerTracker tracker = new ListenerTracker();
         String id = service.addEventListener(tracker.getListener());
         service.register(new Member("apl", "node-1", Type.SERVICE, "subtype", "localhost"));
-        assertEquals("Group created event should be fired", "apl", tracker.takeGroupCreatedEvent().getName());
-        assertEquals("New member registered event should be fired", "node-1", tracker.takeMemberRegisteredEvent().getNode());
-
+        assertEquals("Group created event should be fired", "apl", tracker.takeGroupCreated().getName());
+        assertEquals("New member registered event should be fired", "node-1", tracker.takeMemberRegistered().getNode());
+        assertEquals("New member available event should be fired", "node-1", tracker.takeMemberAvailable().getNode());
+        service.register(new Member("apl", "node-2", Type.SERVICE, "subtype", "localhost"));
+//        assertEquals("Group rebalanced event should be fired", 2, tracker.takeGroupRebalanced().getMembers().size());
+//        assertEquals("New member available event should be fired", "node-2", tracker.takeMemberAvailable().getNode());
+        service.setUnavailable("apl", "node-2");
+//        assertFalse("Group rebalanced event should be fired", tracker.takeGroupRebalanced().getMembers().get("node-2").isAvailable());
         service.unregister("apl");
-        assertNull("The group should be unregistered", service.find("apl"));
+//        assertNull("The group should be unregistered", service.find("apl"));
         service.removeEventListener(id);
     }
 
@@ -153,8 +158,12 @@ public class RegistrationAndDiscoveryServiceHzTest {
         private EventListener listener;
         private BlockingQueue<Member> memberRegistered = new LinkedBlockingQueue<>();
         private BlockingQueue<Member> memberUnregistered = new LinkedBlockingQueue<>();
+        private BlockingQueue<Member> memberAvailable = new LinkedBlockingQueue<>();
+        private BlockingQueue<Member> memberUnavailable = new LinkedBlockingQueue<>();
         private BlockingQueue<Group> groupCreated = new LinkedBlockingQueue<>();
-        private BlockingQueue<Group> groupChanged = new LinkedBlockingQueue<>();
+        private BlockingQueue<Group> groupRebalanced = new LinkedBlockingQueue<>();
+        private BlockingQueue<Group> groupAvailable = new LinkedBlockingQueue<>();
+        private BlockingQueue<Group> groupUnavailable = new LinkedBlockingQueue<>();
         private BlockingQueue<Group> groupRemoved = new LinkedBlockingQueue<>();
 
         public ListenerTracker() {
@@ -168,12 +177,28 @@ public class RegistrationAndDiscoveryServiceHzTest {
                     memberUnregistered.add(member);
                 }
                 @Override
+                public void onMemberAvailable(Member member) {
+                    memberAvailable.add(member);
+                }
+                @Override
+                public void onMemberUnavailable(Member member) {
+                    memberUnavailable.add(member);
+                }
+                @Override
                 public void onGroupCreated(Group group) {
                     groupCreated.add(group);
                 }
                 @Override
-                public void onGroupChanged(Group group) {
-                    groupChanged.add(group);
+                public void onGroupRebalanced(Group group) {
+                    groupRebalanced.add(group);
+                }
+                @Override
+                public void onGroupAvailable(Group group) {
+                    groupAvailable.add(group);
+                }
+                @Override
+                public void onGroupUnavailable(Group group) {
+                    groupUnavailable.add(group);
                 }
                 @Override
                 public void onGroupRemoved(Group group) {
@@ -186,23 +211,39 @@ public class RegistrationAndDiscoveryServiceHzTest {
             return listener;
         }
 
-        public Member takeMemberRegisteredEvent() throws InterruptedException {
+        public Member takeMemberRegistered() throws InterruptedException {
             return memberRegistered.take();
         }
 
-        public Member takeMemberUnregisteredEvent() throws InterruptedException {
+        public Member takeMemberUnregistered() throws InterruptedException {
             return memberUnregistered.take();
         }
 
-        public Group takeGroupCreatedEvent() throws InterruptedException {
+        public Member takeMemberAvailable() throws InterruptedException {
+            return memberAvailable.take();
+        }
+
+        public Member takeMemberUnavailable() throws InterruptedException {
+            return memberUnavailable.take();
+        }
+
+        public Group takeGroupCreated() throws InterruptedException {
             return groupCreated.take();
         }
 
-        public Group takeGroupChangedEvent() throws InterruptedException {
-            return groupChanged.take();
+        public Group takeGroupRebalanced() throws InterruptedException {
+            return groupRebalanced.take();
         }
 
-        public Group takeGroupRemovedEvent() throws InterruptedException {
+        public Group takeGroupAvailable() throws InterruptedException {
+            return groupAvailable.take();
+        }
+
+        public Group takeGroupUnavailable() throws InterruptedException {
+            return groupUnavailable.take();
+        }
+
+        public Group takeGroupRemoved() throws InterruptedException {
             return groupRemoved.take();
         }
     }
