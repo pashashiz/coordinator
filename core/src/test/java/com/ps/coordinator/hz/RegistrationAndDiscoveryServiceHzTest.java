@@ -7,10 +7,8 @@ import org.junit.*;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.*;
 
 import static org.junit.Assert.*;
-import static com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive.*;
 
 
 public class RegistrationAndDiscoveryServiceHzTest {
@@ -19,7 +17,7 @@ public class RegistrationAndDiscoveryServiceHzTest {
     private static RegistrationAndDiscoveryServiceInteractive service;
 
     @BeforeClass public static void setup() {
-        coordinator = new CoordinatorFactory().create(new Config(), false);
+        coordinator = new CoordinatorServerFactory().create(new Config());
         service = coordinator.lookupRegistrationAndDiscoveryServiceInteractive();
     }
 
@@ -82,7 +80,7 @@ public class RegistrationAndDiscoveryServiceHzTest {
         assertNull("Group should be unregistered", service.find("apl"));
     }
 
-    @Test public void testRejoinGroupGracefully() {
+    @Test public void testRejoinGroupGraceful() {
         service.register(new Member("apl", "node-1", Type.SERVICE, "subtype", "localhost"));
         service.register(new Member("apl", "node-2", Type.SERVICE, "subtype", "localhost"));
         service.setUnavailable("apl", "node-1");
@@ -141,111 +139,25 @@ public class RegistrationAndDiscoveryServiceHzTest {
         String id = service.addEventListener(tracker.getListener());
         service.register(new Member("apl", "node-1", Type.SERVICE, "subtype", "localhost"));
         assertEquals("Group created event should be fired", "apl", tracker.takeGroupCreated().getName());
-        assertEquals("New member registered event should be fired", "node-1", tracker.takeMemberRegistered().getNode());
-        assertEquals("New member available event should be fired", "node-1", tracker.takeMemberAvailable().getNode());
+        assertEquals("Group available event should be fired", "apl", tracker.takeGroupAvailable().getName());
+        assertEquals("First member registered event should be fired", "node-1", tracker.takeMemberRegistered().getNode());
+        assertEquals("First member available event should be fired", "node-1", tracker.takeMemberAvailable().getNode());
         service.register(new Member("apl", "node-2", Type.SERVICE, "subtype", "localhost"));
-//        assertEquals("Group rebalanced event should be fired", 2, tracker.takeGroupRebalanced().getMembers().size());
-//        assertEquals("New member available event should be fired", "node-2", tracker.takeMemberAvailable().getNode());
+        assertEquals("Group rebalanced event should be fired", 2, tracker.takeGroupRebalanced().getMembers().size());
+        assertEquals("Second member registered event should be fired", "node-2", tracker.takeMemberRegistered().getNode());
+        assertEquals("Second member available event should be fired", "node-2", tracker.takeMemberAvailable().getNode());
         service.setUnavailable("apl", "node-2");
-//        assertFalse("Group rebalanced event should be fired", tracker.takeGroupRebalanced().getMembers().get("node-2").isAvailable());
+        assertEquals("Group rebalanced event should be fired", 2, tracker.takeGroupRebalanced().getMembers().size());
+        assertEquals("Second member unavailable event should be fired", "node-2", tracker.takeMemberUnavailable().getNode());
+        service.unregister("apl", "node-1");
+        assertEquals("First member unavailable event should be fired", "node-1", tracker.takeMemberUnavailable().getNode());
+        assertEquals("First member unregistered event should be fired", "node-1", tracker.takeMemberUnregistered().getNode());
+        assertEquals("Group unavailable event should be fired", "apl", tracker.takeGroupUnavailable().getName());
         service.unregister("apl");
-//        assertNull("The group should be unregistered", service.find("apl"));
+        assertEquals("Group removed event should be fired", "apl", tracker.takeGroupRemoved().getName());
+        assertEquals("Second member unregistered event should be fired", "node-2", tracker.takeMemberUnregistered().getNode());
+        assertNull("The group should be unregistered", service.find("apl"));
         service.removeEventListener(id);
-    }
-
-    private static class ListenerTracker {
-
-        private EventListener listener;
-        private BlockingQueue<Member> memberRegistered = new LinkedBlockingQueue<>();
-        private BlockingQueue<Member> memberUnregistered = new LinkedBlockingQueue<>();
-        private BlockingQueue<Member> memberAvailable = new LinkedBlockingQueue<>();
-        private BlockingQueue<Member> memberUnavailable = new LinkedBlockingQueue<>();
-        private BlockingQueue<Group> groupCreated = new LinkedBlockingQueue<>();
-        private BlockingQueue<Group> groupRebalanced = new LinkedBlockingQueue<>();
-        private BlockingQueue<Group> groupAvailable = new LinkedBlockingQueue<>();
-        private BlockingQueue<Group> groupUnavailable = new LinkedBlockingQueue<>();
-        private BlockingQueue<Group> groupRemoved = new LinkedBlockingQueue<>();
-
-        public ListenerTracker() {
-            listener = new EventListener() {
-                @Override
-                public void onMemberRegistered(Member member) {
-                    memberRegistered.add(member);
-                }
-                @Override
-                public void onMemberUnregistered(Member member) {
-                    memberUnregistered.add(member);
-                }
-                @Override
-                public void onMemberAvailable(Member member) {
-                    memberAvailable.add(member);
-                }
-                @Override
-                public void onMemberUnavailable(Member member) {
-                    memberUnavailable.add(member);
-                }
-                @Override
-                public void onGroupCreated(Group group) {
-                    groupCreated.add(group);
-                }
-                @Override
-                public void onGroupRebalanced(Group group) {
-                    groupRebalanced.add(group);
-                }
-                @Override
-                public void onGroupAvailable(Group group) {
-                    groupAvailable.add(group);
-                }
-                @Override
-                public void onGroupUnavailable(Group group) {
-                    groupUnavailable.add(group);
-                }
-                @Override
-                public void onGroupRemoved(Group group) {
-                    groupRemoved.add(group);
-                }
-            };
-        }
-
-        public EventListener getListener() {
-            return listener;
-        }
-
-        public Member takeMemberRegistered() throws InterruptedException {
-            return memberRegistered.take();
-        }
-
-        public Member takeMemberUnregistered() throws InterruptedException {
-            return memberUnregistered.take();
-        }
-
-        public Member takeMemberAvailable() throws InterruptedException {
-            return memberAvailable.take();
-        }
-
-        public Member takeMemberUnavailable() throws InterruptedException {
-            return memberUnavailable.take();
-        }
-
-        public Group takeGroupCreated() throws InterruptedException {
-            return groupCreated.take();
-        }
-
-        public Group takeGroupRebalanced() throws InterruptedException {
-            return groupRebalanced.take();
-        }
-
-        public Group takeGroupAvailable() throws InterruptedException {
-            return groupAvailable.take();
-        }
-
-        public Group takeGroupUnavailable() throws InterruptedException {
-            return groupUnavailable.take();
-        }
-
-        public Group takeGroupRemoved() throws InterruptedException {
-            return groupRemoved.take();
-        }
     }
 
     private <T extends Exception> void assertException(String message, Class<T> exception, Runnable function) {

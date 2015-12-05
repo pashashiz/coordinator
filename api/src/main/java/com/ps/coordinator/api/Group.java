@@ -98,7 +98,7 @@ public class Group implements Serializable {
         if (linkedMember == null)
             throw new IllegalArgumentException("No such node [" + node + "] in the group [" + group + "]");
         return new Member(group.getName(), node, group.getType(), group.getSubtype(), group.getAddress())
-                .setAvailable(linkedMember.isAvailable());
+                .setAvailable(linkedMember.isAvailable()).setOwner(linkedMember.getOwner());
     }
 
     public static Group createBy(Member member) {

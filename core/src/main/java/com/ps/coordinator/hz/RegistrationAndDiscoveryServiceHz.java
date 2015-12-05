@@ -4,6 +4,9 @@ import com.hazelcast.core.*;
 import com.hazelcast.map.listener.EntryAddedListener;
 import com.hazelcast.map.listener.EntryRemovedListener;
 import com.hazelcast.map.listener.EntryUpdatedListener;
+import com.hazelcast.mapreduce.aggregation.Aggregation;
+import com.hazelcast.mapreduce.aggregation.Aggregations;
+import com.hazelcast.mapreduce.aggregation.Supplier;
 import com.ps.coordinator.api.*;
 import com.ps.coordinator.api.Member;
 import org.slf4j.Logger;
@@ -15,20 +18,27 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static com.ps.coordinator.api.utils.Assert.*;
 import static com.hazelcast.query.Predicates.*;
 
 public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscoveryServiceInteractive {
 
-    private final boolean isClientMode;
+    private final HazelcastInstance instance;
     private final IMap<String, Group> groups;
     private final ConcurrentMap<String, EventListener> listeners = new ConcurrentHashMap<>();
+    private final ExecutorService executor = Executors.newCachedThreadPool();
     private final Logger log = LoggerFactory.getLogger(getClass());
 
     public RegistrationAndDiscoveryServiceHz(HazelcastInstance hz, boolean isClient) {
-        isClientMode = isClient;
-        groups = hz.getMap("groups-registry");
+        instance = hz;
+        if (!isClient) {
+            instance.getCluster().addMembershipListener(new ClusterMembershipListener());
+            instance.getClientService().addClientListener(new ClientMembershipListener());
+        }
+        groups = instance.getMap("groups-registry");
         groups.addEntryListener(new GroupsListener(), true);
     }
 
@@ -75,7 +85,10 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
                 else if (!group.getAddress().equals(member.getAddress()))
                     throw new IllegalArgumentException("Group member (node) endpoint should be the same as a group (cluster) endpoint");
             }
-            group.getMembers().put(member.getNode(), new LinkedMember(member.isAvailable()));
+            // Use current owner if not specified
+            member.setOwner(instance.getLocalEndpoint().getUuid());
+            // Add new member
+            group.getMembers().put(member.getNode(), new LinkedMember(member.getOwner(), member.isAvailable()));
             groups.put(group.getName(), group);
             log.debug("Group after joining new member: {}", group);
         } finally {
@@ -152,6 +165,35 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
         return new HashSet<>(groups.values(and(equal("type", type), equal("subtype", subtype))));
     }
 
+    protected Set<Group> findAllByOwner(String owner) {
+        log.debug("Finding all groups by owner [{}]", owner);
+        checkNullOrEmpty(owner, "Owner UUID");
+        Aggregation<String, Group, Set<Group>> aggregation = Aggregations.distinctValues();
+        return groups.aggregate(new OwnerFilter(owner), aggregation);
+    }
+
+    protected void shutdown() {
+        instance.shutdown();
+    }
+
+    private static class OwnerFilter extends Supplier<String, Group, Group> {
+
+        private String owner;
+
+        public OwnerFilter(String owner) {
+            this.owner = owner;
+        }
+
+        @Override
+        public Group apply(Map.Entry<String, Group> entry) {
+            for (LinkedMember member : entry.getValue().getMembers().values()) {
+                if (member.getOwner().equals(owner))
+                    return entry.getValue();
+            }
+            return null;
+        }
+    }
+
     private class GroupsListener implements EntryAddedListener<String, Group>,
             EntryUpdatedListener<String, Group>, EntryRemovedListener<String, Group> {
 
@@ -185,7 +227,7 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
             fireMemberEventsIfExists(event.getValue(), event.getOldValue());
             log.trace("Group [{}] was removed entirely", event.getKey());
             for (EventListener listener : listeners.values()) {
-                listener.onGroupUnavailable(event.getValue());
+                listener.onGroupUnavailable(event.getOldValue());
                 listener.onGroupRemoved(event.getOldValue());
             }
         }
@@ -252,7 +294,89 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
         private boolean isGroupBecameUnavailable(Group newGroup, Group oldGroup) {
             return isGroupBecameAvailable(oldGroup, newGroup);
         }
+    }
 
+    private class ClusterMembershipListener implements MembershipListener {
+
+        public void memberAdded(MembershipEvent membershipEvent) {
+            log.debug("New server's node added: " + membershipEvent);
+        }
+
+        public void memberRemoved(final MembershipEvent membershipEvent) {
+            log.debug("Existing server's node disconnected: " + membershipEvent);
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    trySetUnavailableLostNodes(membershipEvent.getMember().getUuid());
+                }
+            });
+        }
+
+        public void memberAttributeChanged(MemberAttributeEvent memberAttributeEvent) {
+            log.debug("Server node's attribute changed: " + memberAttributeEvent);
+        }
+    }
+
+    private class ClientMembershipListener implements ClientListener {
+
+        @Override
+        public void clientConnected(Client client) {
+            log.debug("Connected a new client {}", client);
+        }
+
+        @Override
+        public void clientDisconnected(final Client client) {
+            log.debug("Disconnected an existing client {} " + client);
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    trySetUnavailableLostNodes(client.getUuid());
+                }
+            });
+        }
+    }
+
+    private boolean trySetUnavailableLostNodes(String owner) {
+        log.debug("Try to set unavailable all nodes owned by {}...", owner);
+        boolean success = false;
+        for (Group lost : findAllByOwner(owner))
+            success = success | trySetUnavailableLostNodes(lost, owner);
+        return success;
+    }
+
+    private boolean trySetUnavailableLostNodes(Group suspectGroup, String owner) {
+        log.debug("Try to set unavailable all suspected nodes in {} owned by {}...",  suspectGroup, owner);
+        // Atomic operation to keep consistency
+        groups.lock(suspectGroup.getName());
+        try {
+            Group group = groups.get(suspectGroup.getName());
+            if (group != null) {
+                Set<String> nodes = retrieveNodesByOwner(group, owner);
+                for (String node : nodes) {
+                    log.debug("Found node [{}] in {} which lost its owner: {}, set it unavailable", node, group);
+                    LinkedMember member = group.getMembers().get(node);
+                    member.setAvailable(false).setOwner(null);
+                    groups.put(group.getName(), group);
+                }
+                if (!nodes.isEmpty()) {
+                    log.debug("Group after setting unavailable all nodes owned by {}...", owner);
+                    return true;
+                }
+            }
+        } finally {
+            groups.unlock(suspectGroup.getName());
+        }
+        return false;
+    }
+
+    private Set<String> retrieveNodesByOwner(Group group, String owner) {
+        HashSet<String> nodes = new HashSet<>();
+        for (Map.Entry<String, LinkedMember> entry : group.getMembers().entrySet()) {
+            LinkedMember member = entry.getValue();
+            if (member != null && member.getOwner().equals(owner) && member.isAvailable())
+                nodes.add(entry.getKey());
+        }
+        return nodes;
     }
 
 }

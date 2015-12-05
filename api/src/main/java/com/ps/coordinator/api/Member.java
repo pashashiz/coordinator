@@ -8,17 +8,23 @@ public class Member implements Serializable {
 
     private String name;
     private String node;
+    private String owner;
     private Type type;
     private String subtype;
     private String address;
     private boolean isAvailable;
 
+    public Member(String name, String node, String owner, Type type, String subtype, String address) {
+        setName(name).setNode(node).setOwner(owner).setType(type).setSubtype(subtype)
+                .setAddress(address).setAvailable(true);
+    }
+
     public Member(String name, String node, Type type, String subtype, String address) {
-        setName(name).setNode(node).setType(type).setSubtype(subtype).setAddress(address).setAvailable(true);
+        this(name, node, null, type, subtype, address);
     }
 
     public Member(String name, Type type, String subtype) {
-        this(name, "master", type, subtype, null);
+        this(name, "master", null, type, subtype, null);
     }
 
     public String getName() {
@@ -38,6 +44,15 @@ public class Member implements Serializable {
     public Member setNode(String node) {
         checkNullOrEmpty(node, "Member node name");
         this.node = node;
+        return this;
+    }
+
+    public String getOwner() {
+        return owner;
+    }
+
+    public Member setOwner(String owner) {
+        this.owner = owner;
         return this;
     }
 
@@ -99,6 +114,7 @@ public class Member implements Serializable {
         return "Member{" +
                 "name='" + name + '\'' +
                 ", node='" + node + '\'' +
+                ", owner='" + (owner != null ? owner : "no") + '\'' +
                 ", type=" + type +
                 ", getSubtype='" + subtype + '\'' +
                 ", address='" + address + '\'' +
