@@ -14,6 +14,8 @@ public interface RegistrationAndDiscoveryService {
 
     Group find(String name);
 
+    Set<Group> findAll();
+
     Set<Group> findAll(Type type);
 
     Set<Group> findAll(Type type, String subtype);

@@ -41,6 +41,11 @@ public class RegistrationAndDiscoveryServiceRest implements RegistrationAndDisco
         return service.find(name);
     }
 
+    @RequestMapping(path = "", method = GET)
+    @Override public Set<Group> findAll() {
+        return service.findAll();
+    }
+
     @RequestMapping(path = "/search/findByType", method = GET)
     @Override public Set<Group> findAll(@RequestParam Type type) {
         return service.findAll(type);

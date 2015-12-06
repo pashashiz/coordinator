@@ -152,6 +152,11 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
     }
 
     @Override
+    public Set<Group> findAll() {
+        return new HashSet<>(groups.values());
+    }
+
+    @Override
     public Set<Group> findAll(Type type) {
         log.debug("Finding all groups by type [{}]", type);
         notNull(type, "Group type");
