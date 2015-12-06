@@ -1,14 +1,13 @@
 package com.ps.coordinator.hz;
 
+import com.hazelcast.client.HazelcastClientNotActiveException;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.config.Config;
-import com.ps.coordinator.api.Coordinator;
-import com.ps.coordinator.api.Member;
-import com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive;
-import com.ps.coordinator.api.Type;
+import com.ps.coordinator.api.*;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
+import static com.ps.coordinator.Assert.*;
 
 public class RegistrationAndDiscoveryServiceHzTestCluster {
 
@@ -65,7 +64,31 @@ public class RegistrationAndDiscoveryServiceHzTestCluster {
     }
 
     @Test(timeout = 60000) public void testRegisterAndDiscoveryWhenMainServerCrashes() throws InterruptedException {
-        // TODO
+        RegistrationAndDiscoveryServiceInteractive server = createService();
+        ListenerTracker sTracker = new ListenerTracker();
+        server.addEventListener(sTracker.getListener());
+        final RegistrationAndDiscoveryServiceInteractive client1 = createClient();
+        ListenerTracker c1Tracker = new ListenerTracker();
+        client1.addEventListener(c1Tracker.getListener());
+        client1.register(new Member("apl-1", "node-1", "", Type.SERVICE, "subtype", "localhost-1"));
+        final RegistrationAndDiscoveryServiceInteractive client2 = createClient();
+        ListenerTracker c2Tracker = new ListenerTracker();
+        client2.addEventListener(c2Tracker.getListener());
+        client2.register(new Member("apl-2", "node-1", "", Type.SERVICE, "subtype", "localhost-2"));
+        shutdownAll(server);
+        assertException("First client should lose connection to the server", HazelcastClientNotActiveException.class, new Runnable() {
+            @Override
+            public void run() {
+                client1.find("apl-2");
+            }
+        });
+        assertException("Second client should lose connection to the server", HazelcastClientNotActiveException.class, new Runnable() {
+            @Override
+            public void run() {
+                client2.find("apl-1");
+            }
+        });
+        shutdownAll(client1, client2);
     }
 
     private RegistrationAndDiscoveryServiceInteractive createService() {

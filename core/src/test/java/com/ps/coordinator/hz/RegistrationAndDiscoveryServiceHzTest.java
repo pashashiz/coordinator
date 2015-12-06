@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.*;
+import static com.ps.coordinator.Assert.*;
 
 
 public class RegistrationAndDiscoveryServiceHzTest {
@@ -158,16 +159,6 @@ public class RegistrationAndDiscoveryServiceHzTest {
         assertEquals("Second member unregistered event should be fired", "node-2", tracker.takeMemberUnregistered().getNode());
         assertNull("The group should be unregistered", service.find("apl"));
         service.removeEventListener(id);
-    }
-
-    private <T extends Exception> void assertException(String message, Class<T> exception, Runnable function) {
-        boolean isAssertionTrue = false;
-        try {
-            function.run();
-        } catch (Exception e) {
-            isAssertionTrue = e.getClass().isAssignableFrom(exception);
-        }
-        assertTrue(message, isAssertionTrue);
     }
 
 }
