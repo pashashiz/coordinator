@@ -1,15 +1,15 @@
 package com.ps.coordinator.hz;
 
 import com.hazelcast.config.Config;
-import com.ps.coordinator.api.*;
 
+import com.ps.coordinator.api.*;
 import org.junit.*;
+import org.junit.Assert;
 
 import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.*;
-import static com.ps.coordinator.Assert.*;
 
 
 public class RegistrationAndDiscoveryServiceHzTest {
@@ -53,21 +53,21 @@ public class RegistrationAndDiscoveryServiceHzTest {
 
     @Test public void testJoinGroupFailed() {
         service.register(new Member("apl", "node-1", Type.SERVICE, "subtype", "localhost"));
-        assertException("The new member of the existing group with different type should be rejected",
+        com.ps.coordinator.Assert.assertException("The new member of the existing group with different type should be rejected",
                 IllegalArgumentException.class, new Runnable() {
             @Override
             public void run() {
                 service.register(new Member("apl", Type.RESOURCE, "subtype"));
             }
         });
-        assertException("The new member of the existing group with different subtype should be rejected",
+        com.ps.coordinator.Assert.assertException("The new member of the existing group with different subtype should be rejected",
                 IllegalArgumentException.class, new Runnable() {
                     @Override
                     public void run() {
                         service.register(new Member("apl", "node-3", Type.SERVICE, "other-subtype", "localhost"));
                     }
                 });
-        assertException("The new member of the existing group with different address should be rejected",
+        com.ps.coordinator.Assert.assertException("The new member of the existing group with different address should be rejected",
                 IllegalArgumentException.class, new Runnable() {
                     @Override
                     public void run() {
@@ -139,23 +139,23 @@ public class RegistrationAndDiscoveryServiceHzTest {
         ListenerTracker tracker = new ListenerTracker();
         String id = service.addEventListener(tracker.getListener());
         service.register(new Member("apl", "node-1", Type.SERVICE, "subtype", "localhost"));
-        assertEquals("Group created event should be fired", "apl", tracker.takeGroupCreated().getName());
-        assertEquals("Group available event should be fired", "apl", tracker.takeGroupAvailable().getName());
+        Assert.assertEquals("Group created event should be fired", "apl", tracker.takeGroupCreated().getName());
+        Assert.assertEquals("Group available event should be fired", "apl", tracker.takeGroupAvailable().getName());
         assertEquals("First member registered event should be fired", "node-1", tracker.takeMemberRegistered().getNode());
         assertEquals("First member available event should be fired", "node-1", tracker.takeMemberAvailable().getNode());
         service.register(new Member("apl", "node-2", Type.SERVICE, "subtype", "localhost"));
-        assertEquals("Group rebalanced event should be fired", 2, tracker.takeGroupRebalanced().getMembers().size());
+        Assert.assertEquals("Group rebalanced event should be fired", 2, tracker.takeGroupRebalanced().getMembers().size());
         assertEquals("Second member registered event should be fired", "node-2", tracker.takeMemberRegistered().getNode());
         assertEquals("Second member available event should be fired", "node-2", tracker.takeMemberAvailable().getNode());
         service.setUnavailable("apl", "node-2");
-        assertEquals("Group rebalanced event should be fired", 2, tracker.takeGroupRebalanced().getMembers().size());
+        Assert.assertEquals("Group rebalanced event should be fired", 2, tracker.takeGroupRebalanced().getMembers().size());
         assertEquals("Second member unavailable event should be fired", "node-2", tracker.takeMemberUnavailable().getNode());
         service.unregister("apl", "node-1");
         assertEquals("First member unavailable event should be fired", "node-1", tracker.takeMemberUnavailable().getNode());
         assertEquals("First member unregistered event should be fired", "node-1", tracker.takeMemberUnregistered().getNode());
-        assertEquals("Group unavailable event should be fired", "apl", tracker.takeGroupUnavailable().getName());
+        Assert.assertEquals("Group unavailable event should be fired", "apl", tracker.takeGroupUnavailable().getName());
         service.unregister("apl");
-        assertEquals("Group removed event should be fired", "apl", tracker.takeGroupRemoved().getName());
+        Assert.assertEquals("Group removed event should be fired", "apl", tracker.takeGroupRemoved().getName());
         assertEquals("Second member unregistered event should be fired", "node-2", tracker.takeMemberUnregistered().getNode());
         assertNull("The group should be unregistered", service.find("apl"));
         service.removeEventListener(id);

@@ -1,10 +1,10 @@
 package com.ps.coordinator.api;
 
+import com.ps.coordinator.api.utils.Assert;
+
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
-
-import static com.ps.coordinator.api.utils.Assert.*;
 
 public class Group implements Serializable {
 
@@ -23,7 +23,7 @@ public class Group implements Serializable {
     }
 
     public Group setName(String name) {
-        checkNullOrEmpty(name, "Member name");
+        Assert.notNullOrEmpty(name, "Member name");
         this.name = name;
         return this;
     }
@@ -33,7 +33,7 @@ public class Group implements Serializable {
     }
 
     public Group setType(Type type) {
-        checkNull(type, "Member type");
+        Assert.notNull(type, "Member type");
         this.type = type;
         return this;
     }
@@ -43,7 +43,7 @@ public class Group implements Serializable {
     }
 
     public Group setSubtype(String subtype) {
-        checkNullOrEmpty(subtype, "Member subtype");
+        Assert.notNullOrEmpty(subtype, "Member subtype");
         this.subtype = subtype;
         return this;
     }

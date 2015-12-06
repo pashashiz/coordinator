@@ -1,8 +1,8 @@
 package com.ps.coordinator.hz;
 
+import com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive;
 import com.ps.coordinator.api.Group;
 import com.ps.coordinator.api.Member;
-import com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;

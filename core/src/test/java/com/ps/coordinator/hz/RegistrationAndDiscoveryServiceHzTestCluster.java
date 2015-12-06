@@ -3,11 +3,14 @@ package com.ps.coordinator.hz;
 import com.hazelcast.client.HazelcastClientNotActiveException;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.config.Config;
-import com.ps.coordinator.api.*;
+import com.ps.coordinator.api.RegistrationAndDiscoveryServiceInteractive;
+import com.ps.coordinator.api.Type;
+import com.ps.coordinator.Assert;
+import com.ps.coordinator.api.Coordinator;
+import com.ps.coordinator.api.Member;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
-import static com.ps.coordinator.Assert.*;
 
 public class RegistrationAndDiscoveryServiceHzTestCluster {
 
@@ -76,13 +79,13 @@ public class RegistrationAndDiscoveryServiceHzTestCluster {
         client2.addEventListener(c2Tracker.getListener());
         client2.register(new Member("apl-2", "node-1", "", Type.SERVICE, "subtype", "localhost-2"));
         shutdownAll(server);
-        assertException("First client should lose connection to the server", HazelcastClientNotActiveException.class, new Runnable() {
+        Assert.assertException("First client should lose connection to the server", HazelcastClientNotActiveException.class, new Runnable() {
             @Override
             public void run() {
                 client1.find("apl-2");
             }
         });
-        assertException("Second client should lose connection to the server", HazelcastClientNotActiveException.class, new Runnable() {
+        Assert.assertException("Second client should lose connection to the server", HazelcastClientNotActiveException.class, new Runnable() {
             @Override
             public void run() {
                 client2.find("apl-1");

@@ -1,6 +1,6 @@
 package com.ps.coordinator.api;
 
-import static com.ps.coordinator.api.utils.Assert.*;
+import com.ps.coordinator.api.utils.Assert;
 
 import java.io.Serializable;
 
@@ -13,6 +13,8 @@ public class Member implements Serializable {
     private String subtype;
     private String address;
     private boolean isAvailable;
+
+    public Member() {}
 
     public Member(String name, String node, String owner, Type type, String subtype, String address) {
         setName(name).setNode(node).setOwner(owner).setType(type).setSubtype(subtype)
@@ -32,7 +34,7 @@ public class Member implements Serializable {
     }
 
     public Member setName(String name) {
-        checkNullOrEmpty(name, "Member name");
+        Assert.notNullOrEmpty(name, "Member name");
         this.name = name;
         return this;
     }
@@ -42,7 +44,7 @@ public class Member implements Serializable {
     }
 
     public Member setNode(String node) {
-        checkNullOrEmpty(node, "Member node name");
+        Assert.notNullOrEmpty(node, "Member node name");
         this.node = node;
         return this;
     }
@@ -61,7 +63,7 @@ public class Member implements Serializable {
     }
 
     public Member setType(Type type) {
-        checkNull(type, "Member type");
+        Assert.notNull(type, "Member type");
         this.type = type;
         return this;
     }
@@ -71,7 +73,7 @@ public class Member implements Serializable {
     }
 
     public Member setSubtype(String subtype) {
-        checkNullOrEmpty(subtype, "Member subtype");
+        Assert.notNullOrEmpty(subtype, "Member subtype");
         this.subtype = subtype;
         return this;
     }

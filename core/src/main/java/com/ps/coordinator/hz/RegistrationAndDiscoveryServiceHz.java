@@ -21,8 +21,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.ps.coordinator.api.utils.Assert.*;
 import static com.hazelcast.query.Predicates.*;
+import static com.ps.coordinator.api.utils.Assert.*;
 
 public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscoveryServiceInteractive {
 
@@ -59,11 +59,11 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
         log.debug("Registering {}...", member);
         if (!member.isAvailable())
             throw new IllegalStateException("Cannot register unavailable member");
-        checkNull(member.getType(), "Member type");
-        checkNullOrEmpty(member.getSubtype(), "Member subtype");
-        checkNullOrEmpty(member.getNode(), "Member node name");
+        notNull(member.getType(), "Member type");
+        notNullOrEmpty(member.getSubtype(), "Member subtype");
+        notNullOrEmpty(member.getNode(), "Member node name");
         if (member.getType() == Type.SERVICE)
-            checkNullOrEmpty(member.getAddress(), "Member address");
+            notNullOrEmpty(member.getAddress(), "Member address");
         // Atomic operation to keep consistency
         groups.lock(member.getName());
         try {
@@ -86,7 +86,8 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
                     throw new IllegalArgumentException("Group member (node) endpoint should be the same as a group (cluster) endpoint");
             }
             // Use current owner if not specified
-            member.setOwner(instance.getLocalEndpoint().getUuid());
+            if (member.getOwner() == null || member.getOwner().isEmpty())
+                member.setOwner(instance.getLocalEndpoint().getUuid());
             // Add new member
             group.getMembers().put(member.getNode(), new LinkedMember(member.getOwner(), member.isAvailable()));
             groups.put(group.getName(), group);
@@ -153,21 +154,21 @@ public class RegistrationAndDiscoveryServiceHz implements RegistrationAndDiscove
     @Override
     public Set<Group> findAll(Type type) {
         log.debug("Finding all groups by type [{}]", type);
-        checkNull(type, "Group type");
+        notNull(type, "Group type");
         return new HashSet<>(groups.values(equal("type", type)));
     }
 
     @Override
     public Set<Group> findAll(Type type, String subtype) {
         log.debug("Finding all groups by type [{}] and subtype [{}]", type, subtype);
-        checkNull(type, "Group type");
-        checkNullOrEmpty(subtype, "Group subtype");
+        notNull(type, "Group type");
+        notNullOrEmpty(subtype, "Group subtype");
         return new HashSet<>(groups.values(and(equal("type", type), equal("subtype", subtype))));
     }
 
     protected Set<Group> findAllByOwner(String owner) {
         log.debug("Finding all groups by owner [{}]", owner);
-        checkNullOrEmpty(owner, "Owner UUID");
+        notNullOrEmpty(owner, "Owner UUID");
         Aggregation<String, Group, Set<Group>> aggregation = Aggregations.distinctValues();
         return groups.aggregate(new OwnerFilter(owner), aggregation);
     }
