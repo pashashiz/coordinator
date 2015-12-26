@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="components/bootstrap/dist/css/bootstrap.css">
+    <link rel="stylesheet" href="css/app.css">
+    <script src="components/jquery/dist/jquery.js"></script>
+    <script src="components/angular/angular.js"></script>
+    <script src="components/angular-route/angular-route.js"></script>
+    <script src="components/angular-resource/angular-resource.js"></script>
+    <script src="scripts/app/app.js"></script>
+    <script src="scripts/app/services/security.js"></script>
+    <script src="scripts/app/controllers/home.js"></script>
+    <script src="scripts/app/controllers/login.js"></script>
+    <script src="scripts/app/controllers/navigation.js"></script>
+    <title>Index</title>
+</head>
+<body ng-app="securedApp" ng-cloak class="ng-cloak">
+<div ng-controller="NavigationCtrl" class="container">
+    <ul class="nav nav-pills" role="tablist">
+        <li ng-class="{active: location == 'home'}"><a href="#/">Home</a></li>
+        <li ng-show="!authenticated" ng-class="{active: location == 'login'}"><a href="#/views/login">Login</a></li>
+        <li ng-show="authenticated"><a href="" ng-click="logout()">logout</a></li>
+    </ul>
+</div>
+<div ng-view class="container"></div>
+</body>
+</html>
