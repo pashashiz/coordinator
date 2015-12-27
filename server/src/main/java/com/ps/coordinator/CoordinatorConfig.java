@@ -11,7 +11,9 @@ import org.springframework.context.annotation.Configuration;
 public class CoordinatorConfig {
 
     @Bean public Config hazelcastConfig() {
-        return new Config();
+        Config config = new Config();
+        config.setProperty("hazelcast.logging.type", "slf4j");
+        return config;
     }
 
     @Bean(destroyMethod = "shutdown") public Coordinator coordinator() {

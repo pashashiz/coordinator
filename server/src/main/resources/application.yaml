@@ -1,0 +1,19 @@
+# CONFIGURATION
+spring:
+  # APPLICATION
+  application:
+    name: Coordinator
+  # RESOURCE HANDLING
+  resources:
+    cache-period: 0
+# SERVER
+server:
+  port: 8080
+# LOGGING
+logging:
+  level:
+    root: INFO
+    com.ps.coordinator: TRACE
+
+
+

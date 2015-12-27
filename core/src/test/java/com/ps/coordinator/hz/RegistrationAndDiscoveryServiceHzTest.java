@@ -18,7 +18,8 @@ public class RegistrationAndDiscoveryServiceHzTest {
     private static RegistrationAndDiscoveryServiceInteractive service;
 
     @BeforeClass public static void setup() {
-        coordinator = new CoordinatorServerFactory().create(new Config());
+        Config config = new TestConfigFactory().createConfig();
+        coordinator = new CoordinatorServerFactory().create(config);
         service = coordinator.lookupRegistrationAndDiscoveryServiceInteractive();
     }
 

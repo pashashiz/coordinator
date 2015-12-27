@@ -95,13 +95,13 @@ public class RegistrationAndDiscoveryServiceHzTestCluster {
     }
 
     private RegistrationAndDiscoveryServiceInteractive createService() {
-        Config config = new Config();
+        Config config = new TestConfigFactory().createConfig();
         Coordinator coordinator = new CoordinatorServerFactory().create(config);
         return coordinator.lookupRegistrationAndDiscoveryServiceInteractive();
     }
 
     private RegistrationAndDiscoveryServiceInteractive createClient() {
-        ClientConfig config = new ClientConfig();
+        ClientConfig config = new TestConfigFactory().createClientConfig();
         Coordinator coordinator = new MockCoordinatorClientFactory().create(config);
         return coordinator.lookupRegistrationAndDiscoveryServiceInteractive();
     }
